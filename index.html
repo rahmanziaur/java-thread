@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Java Multi-Threading Laboratory — Ziaur Rahman</title>
+<style>
+  :root{
+    --bg:#ffffff;
+    --fg:#000000;
+    --line:#000000;
+    --muted:#4a4a4a;
+    --code-bg:#f4f4f4;
+    --accent:#000000;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--fg);
+    font-family: Georgia, 'Times New Roman', serif;
+    line-height:1.6;
+  }
+  header{
+    border-bottom:2px solid var(--line);
+    padding:28px 24px 20px;
+  }
+  header h1{
+    margin:0 0 4px;
+    font-size:1.7rem;
+    font-weight:700;
+  }
+  header p{
+    margin:0;
+    color:var(--muted);
+    font-size:0.95rem;
+  }
+  header a{color:var(--fg);}
+  .layout{
+    display:flex;
+    max-width:1100px;
+    margin:0 auto;
+    align-items:flex-start;
+  }
+  nav#sidebar{
+    width:250px;
+    flex-shrink:0;
+    border-right:1px solid var(--line);
+    min-height:70vh;
+    padding:20px 12px 40px 0;
+    position:sticky;
+    top:0;
+  }
+  nav#sidebar ol{
+    list-style:none;
+    margin:0;
+    padding:0;
+    counter-reset:topic;
+  }
+  nav#sidebar li{
+    counter-increment:topic;
+    margin-bottom:2px;
+  }
+  nav#sidebar button{
+    all:unset;
+    display:block;
+    width:100%;
+    padding:8px 10px;
+    cursor:pointer;
+    font-family: system-ui, sans-serif;
+    font-size:0.88rem;
+    border-radius:4px;
+  }
+  nav#sidebar button::before{
+    content: counter(topic) ". ";
+  }
+  nav#sidebar button:hover{
+    background:#f0f0f0;
+  }
+  nav#sidebar button.active{
+    background:var(--fg);
+    color:var(--bg);
+  }
+  main{
+    flex:1;
+    padding:24px 28px 60px 28px;
+    max-width:720px;
+  }
+  .progress{
+    font-family: system-ui, sans-serif;
+    font-size:0.85rem;
+    color:var(--muted);
+    margin-bottom:6px;
+  }
+  .topic-title{
+    font-size:1.5rem;
+    margin:0 0 14px;
+    padding-bottom:10px;
+    border-bottom:1px solid var(--line);
+  }
+  .topic h3{
+    font-family: system-ui, sans-serif;
+    font-size:0.95rem;
+    text-transform:none;
+    margin:22px 0 8px;
+    letter-spacing:0.02em;
+  }
+  pre{
+    background:var(--code-bg);
+    border:1px solid #ccc;
+    border-radius:4px;
+    padding:14px;
+    overflow-x:auto;
+    font-family: Consolas, Monaco, 'Courier New', monospace;
+    font-size:0.85rem;
+    line-height:1.5;
+  }
+  code{
+    font-family: Consolas, Monaco, 'Courier New', monospace;
+  }
+  .assignment{
+    border:1px solid var(--line);
+    border-left:4px solid var(--fg);
+    padding:14px 16px;
+    margin-top:14px;
+    background:#fafafa;
+  }
+  .assignment p:first-child{margin-top:0;}
+  .assignment p:last-child{margin-bottom:0;}
+  .nav-buttons{
+    display:flex;
+    justify-content:space-between;
+    margin-top:34px;
+    padding-top:16px;
+    border-top:1px solid var(--line);
+    font-family: system-ui, sans-serif;
+  }
+  .nav-buttons button{
+    background:var(--fg);
+    color:var(--bg);
+    border:none;
+    padding:10px 18px;
+    font-size:0.9rem;
+    cursor:pointer;
+    border-radius:4px;
+  }
+  .nav-buttons button:disabled{
+    opacity:0.3;
+    cursor:default;
+  }
+  table{border-collapse:collapse; width:100%; margin:12px 0; font-family:system-ui,sans-serif; font-size:0.88rem;}
+  th,td{border:1px solid var(--line); padding:6px 10px; text-align:left;}
+  footer{
+    text-align:center;
+    padding:24px;
+    border-top:2px solid var(--line);
+    font-family: system-ui, sans-serif;
+    font-size:0.85rem;
+    color:var(--muted);
+  }
+  footer a{color:var(--fg);}
+  @media (max-width:800px){
+    .layout{flex-direction:column;}
+    nav#sidebar{width:100%; border-right:none; border-bottom:1px solid var(--line); position:static;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Java Multi-Threading Laboratory</h1>
+  <p>by Ziaur Rahman — <a href="https://rahmanziaur.github.io/" target="_blank">rahmanziaur.github.io</a></p>
+</header>
+
+<div class="layout">
+  <nav id="sidebar">
+    <ol id="sidebar-list"></ol>
+  </nav>
+
+  <main>
+    <div class="progress" id="progress"></div>
+    <div class="topic" id="topic-content"></div>
+    <div class="nav-buttons">
+      <button id="prevBtn">&larr; Previous</button>
+      <button id="nextBtn">Next &rarr;</button>
+    </div>
+  </main>
+</div>
+
+<footer>
+  Java Multi-Threading Laboratory &middot; <a href="https://rahmanziaur.github.io/" target="_blank">rahmanziaur.github.io</a>
+</footer>
+
+<script>
+const topics = [
+{
+  title: "1. Static vs Non-Static Fields",
+  body: `
+  <p>When you want to count how many objects of a class have been created, the counter field should be <code>static</code>, not an ordinary instance field. <strong>Static does not mean "cannot change"</strong> — it means there is one single copy of the variable shared by the whole class, instead of one copy per object.</p>
+  <h3>Example</h3>
+  <pre><code>class Student {
+    static int count = 0;
+
+    Student() {
+        count++;
+    }
+}
+
+public class Main {
+    public static void main(String[] args) {
+        Student s1 = new Student();
+        Student s2 = new Student();
+        Student s3 = new Student();
+
+        System.out.println(Student.count); // 3
+    }
+}</code></pre>
+  <p>If <code>count</code> were a plain instance field instead, every <code>Student</code> object would get its own private copy, and each one would print <code>1</code>, not a running total.</p>
+  <table>
+    <tr><th></th><th>static int count</th><th>int count</th></tr>
+    <tr><td>Copies of the variable</td><td>One per class</td><td>One per object</td></tr>
+    <tr><td>Shared across objects?</td><td>Yes</td><td>No</td></tr>
+    <tr><td>Good for counting total objects?</td><td>Yes</td><td>No</td></tr>
+  </table>`,
+  assignment: `<p><strong>Assignment:</strong> Create a class <code>Car</code> with a static field <code>totalCars</code> and an instance field <code>engineNumber</code>. Create 5 <code>Car</code> objects and print both <code>Car.totalCars</code> and each object's <code>engineNumber</code>. Explain in one sentence why <code>totalCars</code> gives the same value no matter which object you read it from.</p>`
+},
+{
+  title: "2. Starting Threads: start() vs run()",
+  body: `
+  <p>A class that extends <code>Thread</code> gets its own line of execution when you call <code>start()</code>. Calling <code>run()</code> directly is just a normal method call on the current thread — no new thread is created.</p>
+  <h3>Example</h3>
+  <pre><code>class CookingTask extends Thread {
+    private String taskName;
+
+    public CookingTask(String taskName) {
+        this.taskName = taskName;
+    }
+
+    @Override
+    public void run() {
+        System.out.println(Thread.currentThread().getName()
+                + " - Running: " + taskName);
+    }
+}
+
+public class ThreadMain {
+    public static void main(String[] args) {
+        CookingTask task1 = new CookingTask("Cooking");
+        CookingTask task2 = new CookingTask("Washing");
+
+        task1.start(); // real, concurrent thread
+        task2.start();
+
+        System.out.println("All tasks started...");
+    }
+}</code></pre>
+  <p>Because <code>CookingTask</code> already extends <code>Thread</code>, you should call <code>task1.start()</code> directly. Wrapping it in another <code>new Thread(task1)</code> creates a thread inside a thread, which is not what you want.</p>`,
+  assignment: `<p><strong>Assignment:</strong> Write two classes that both extend <code>Thread</code>, each printing its name 5 times with a short pause. Run them first with <code>start()</code> and then with <code>run()</code>, and write down the difference you observe in the output order.</p>`
+},
+{
+  title: "3. Pausing a Thread: sleep()",
+  body: `
+  <p><code>Thread.sleep(milliseconds)</code> pauses the current thread for the given time without ending it. The thread enters a <em>timed waiting</em> state and resumes automatically afterward.</p>
+  <h3>Example</h3>
+  <pre><code>@Override
+public void run() {
+    long startTime = System.currentTimeMillis();
+
+    while (true) {
+        System.out.println(Thread.currentThread().getName()
+                + " - Running: " + taskName);
+
+        try {
+            Thread.sleep(1000); // pause 1 second
+        } catch (InterruptedException e) {
+            System.out.println(taskName + " interrupted.");
+            break;
+        }
+
+        if (System.currentTimeMillis() - startTime >= 10_000) {
+            break; // stop after ~10 seconds
+        }
+    }
+    System.out.println(taskName + " finished.");
+}</code></pre>
+  <p><code>sleep()</code> must always be wrapped in a try/catch for <code>InterruptedException</code>, because another thread can interrupt the sleeping thread.</p>`,
+  assignment: `<p><strong>Assignment:</strong> Modify the loop above so it prints every 3 seconds instead of every 1 second, and stops after 15 seconds instead of 10. Predict how many lines it will print before running it, then check your answer.</p>`
+},
+{
+  title: "4. Waiting for a Thread: join()",
+  body: `
+  <p><code>join()</code> makes the calling thread (often <code>main</code>) pause until the target thread finishes. It does <strong>not</strong> make threads run one after another — they still start concurrently; <code>join()</code> only makes someone wait for the result.</p>
+  <h3>Example</h3>
+  <pre><code>CookingTask task1 = new CookingTask("Cooking");
+CookingTask task2 = new CookingTask("Washing");
+CookingTask task3 = new CookingTask("Cleaning");
+
+task1.start();
+task2.start();
+task3.start();
+
+task1.join();
+task2.join();
+task3.join();
+
+System.out.println("All tasks completed!");</code></pre>
+  <p>Without the three <code>join()</code> calls, <code>"All tasks completed!"</code> could print before the worker threads are actually done, since <code>main</code> would keep going immediately after calling <code>start()</code>.</p>`,
+  assignment: `<p><strong>Assignment:</strong> Start 3 threads that each count from 1 to 5 with a 1-second pause between numbers. Print <code>"Main thread waiting..."</code> right after starting them, then add <code>join()</code> calls and print <code>"All done!"</code> only once every thread has actually finished. Run it once without the <code>join()</code> calls to see the difference.</p>`
+},
+{
+  title: "5. Thread Lifecycle: getState()",
+  body: `
+  <p>Every thread moves through a lifecycle: <code>NEW → RUNNABLE → (BLOCKED/WAITING/TIMED_WAITING) → TERMINATED</code>. You can inspect the current stage with <code>getState()</code>.</p>
+  <h3>Example</h3>
+  <pre><code>CookingTask task1 = new CookingTask("Cooking");
+
+System.out.println("Before start: " + task1.getState());  // NEW
+
+task1.start();
+System.out.println("After start: " + task1.getState());   // RUNNABLE
+
+task1.join();
+System.out.println("After finish: " + task1.getState());  // TERMINATED</code></pre>`,
+  assignment: `<p><strong>Assignment:</strong> Create a thread that sleeps for 3 seconds inside <code>run()</code>. From <code>main</code>, start it, then print its state immediately after starting, again after 1 second (hint: use <code>Thread.sleep(1000)</code> in <code>main</code> too), and again after it finishes. Note which state appears while it is sleeping.</p>`
+},
+{
+  title: "6. Naming Threads",
+  body: `
+  <p>By default threads are named <code>Thread-0</code>, <code>Thread-1</code>, and so on. You can give them meaningful names with <code>setName()</code>, which makes debugging multithreaded output far easier.</p>
+  <h3>Example</h3>
+  <pre><code>CookingTask task1 = new CookingTask("Cooking");
+CookingTask task2 = new CookingTask("Washing");
+
+task1.setName("Cooking-Thread");
+task2.setName("Washing-Thread");
+
+task1.start();
+task2.start();
+
+// inside run():
+System.out.println(Thread.currentThread().getName());</code></pre>`,
+  assignment: `<p><strong>Assignment:</strong> Create 4 threads named after the days of the week ("Mon-Thread", "Tue-Thread", etc.). Each should print its own name 3 times. Confirm in the output that every line shows the custom name, not <code>Thread-0</code> style names.</p>`
+},
+{
+  title: "7. isAlive()",
+  body: `
+  <p><code>isAlive()</code> tells you whether a thread has been started and has not yet terminated. It returns <code>false</code> before <code>start()</code> and after the thread finishes, and <code>true</code> while it is running.</p>
+  <h3>Example</h3>
+  <pre><code>CookingTask task1 = new CookingTask("Cooking");
+
+System.out.println(task1.isAlive()); // false
+
+task1.start();
+System.out.println(task1.isAlive()); // true
+
+task1.join();
+System.out.println(task1.isAlive()); // false</code></pre>`,
+  assignment: `<p><strong>Assignment:</strong> Start a thread that runs for 4 seconds. In <code>main</code>, check and print <code>isAlive()</code> once every second for 5 seconds using a loop with <code>Thread.sleep(1000)</code>. Observe exactly when it flips from <code>true</code> to <code>false</code>.</p>`
+},
+{
+  title: "8. interrupt()",
+  body: `
+  <p><code>interrupt()</code> does not kill a thread — it only <strong>requests</strong> that the thread stop what it is doing. If the thread is sleeping or waiting, it receives an <code>InterruptedException</code>, which it must handle (for example, by breaking out of its loop).</p>
+  <h3>Example</h3>
+  <pre><code>class CookingTask extends Thread {
+    private String taskName;
+    public CookingTask(String taskName) { this.taskName = taskName; }
+
+    @Override
+    public void run() {
+        for (;;) {
+            System.out.println(Thread.currentThread().getName() + " -> " + taskName);
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                System.out.println(taskName + " was interrupted!");
+                break;
+            }
+        }
+        System.out.println(taskName + " finished.");
+    }
+}
+
+// in main():
+CookingTask task1 = new CookingTask("Cooking");
+task1.start();
+Thread.sleep(5000);
+task1.interrupt();</code></pre>`,
+  assignment: `<p><strong>Assignment:</strong> Start 3 infinite-loop threads like the one above. Let them run for 6 seconds, then interrupt only 2 of them, leaving the third running. Add a way to stop the third one too (hint: give it a normal exit condition, such as a loop counter, instead of interrupting it).</p>`
+},
+{
+  title: "9. Race Conditions",
+  body: `
+  <p>A <strong>race condition</strong> happens when multiple threads read and modify the same shared variable at the same time, and the final result depends on unpredictable timing. The expression <code>count++</code> looks like one step, but it is really three: <em>read</em>, <em>add 1</em>, <em>write</em>. Two threads can both read the same old value before either writes back, so one increment gets silently lost.</p>
+  <h3>Example — the problem</h3>
+  <pre><code>class CookingTask extends Thread {
+    static int staticCount = 0;
+    private String taskName;
+    public CookingTask(String taskName) { this.taskName = taskName; }
+
+    @Override
+    public void run() {
+        for (int i = 0; i < 1_000_000; i++) {
+            staticCount++;
+        }
+    }
+}
+
+// main(): start 3 such threads, then join() them all, then:
+System.out.println("Expected = " + (3 * 1_000_000));
+System.out.println("Actual   = " + CookingTask.staticCount);
+// Actual is usually LESS than 3,000,000</code></pre>`,
+  assignment: `<p><strong>Assignment:</strong> Run the example above 3 separate times and record the "Actual" value each time. Confirm it changes between runs and is usually less than 3,000,000. Explain in your own words, using the read-add-write idea, why an increment can be lost.</p>`
+},
+{
+  title: "10. Fixing It: synchronized",
+  body: `
+  <p>Marking a method <code>synchronized</code> ensures that only one thread at a time can execute it. This protects the read-add-write sequence from being interrupted by another thread, eliminating the lost update.</p>
+  <h3>Example</h3>
+  <pre><code>class CookingTask extends Thread {
+    static int staticCount = 0;
+
+    @Override
+    public void run() {
+        for (int i = 0; i < 1_000_000; i++) {
+            incrementCount();
+        }
+    }
+
+    static synchronized void incrementCount() {
+        staticCount++;
+    }
+}
+// Now Actual always equals Expected (3,000,000)</code></pre>`,
+  assignment: `<p><strong>Assignment:</strong> Take your race-condition program from the previous topic and fix it using a <code>synchronized</code> method. Run it 3 times and confirm the actual count always matches the expected count exactly.</p>`
+},
+{
+  title: "11. Fixing It: AtomicInteger",
+  body: `
+  <p><code>AtomicInteger</code> (from <code>java.util.concurrent.atomic</code>) provides lock-free, thread-safe operations like <code>incrementAndGet()</code>. It solves the same problem as <code>synchronized</code> but without an explicit lock, which is often faster for simple counters.</p>
+  <h3>Example</h3>
+  <pre><code>import java.util.concurrent.atomic.AtomicInteger;
+
+class CookingTask extends Thread {
+    static AtomicInteger staticCount = new AtomicInteger(0);
+
+    @Override
+    public void run() {
+        for (int i = 0; i < 1_000_000; i++) {
+            staticCount.incrementAndGet();
+        }
+    }
+}
+// System.out.println(CookingTask.staticCount.get());</code></pre>
+  <table>
+    <tr><th></th><th>count++</th><th>synchronized</th><th>AtomicInteger</th></tr>
+    <tr><td>Thread-safe?</td><td>No</td><td>Yes</td><td>Yes</td></tr>
+    <tr><td>Explicit lock?</td><td>No</td><td>Yes</td><td>No</td></tr>
+  </table>`,
+  assignment: `<p><strong>Assignment:</strong> Rewrite your counter using <code>AtomicInteger</code> instead of <code>synchronized</code>. Compare the two versions and write one sentence on which felt simpler to write.</p>`
+},
+{
+  title: "12. volatile — Visibility Between Threads",
+  body: `
+  <p><code>synchronized</code> and <code>AtomicInteger</code> solve <strong>atomicity</strong> (an operation happening as one uninterruptible step). <code>volatile</code> solves a different problem: <strong>visibility</strong> — making sure that when one thread changes a variable, other threads immediately see the new value instead of a cached, stale copy.</p>
+  <h3>Example — the problem</h3>
+  <pre><code>class Worker extends Thread {
+    boolean running = true; // no volatile
+
+    @Override
+    public void run() {
+        while (running) {
+            // busy loop; may never notice the change
+        }
+        System.out.println("Worker stopped.");
+    }
+}
+
+// main():
+Worker w = new Worker();
+w.start();
+Thread.sleep(1000);
+w.running = false; // may not be seen by the worker thread</code></pre>
+  <h3>Example — the fix</h3>
+  <pre><code>class Worker extends Thread {
+    volatile boolean running = true;
+
+    @Override
+    public void run() {
+        while (running) { }
+        System.out.println("Worker stopped.");
+    }
+}</code></pre>`,
+  assignment: `<p><strong>Assignment:</strong> Run the "problem" version above several times. On most machines it may still stop (JVMs vary), so also try adding some real work inside the loop (e.g. incrementing a local counter) to make the caching effect more visible. Then add <code>volatile</code> and confirm the worker always reacts promptly.</p>`
+},
+{
+  title: "13. Daemon Threads",
+  body: `
+  <p>A <strong>daemon thread</strong> runs in the background and does not keep the JVM alive. When all non-daemon (user) threads finish, the JVM exits immediately, even if daemon threads are still running. Use <code>setDaemon(true)</code> before calling <code>start()</code>.</p>
+  <h3>Example</h3>
+  <pre><code>class BackgroundLogger extends Thread {
+    @Override
+    public void run() {
+        for (;;) {
+            System.out.println("Logging...");
+            try { Thread.sleep(1000); } catch (InterruptedException e) { break; }
+        }
+    }
+}
+
+public class Main {
+    public static void main(String[] args) throws InterruptedException {
+        BackgroundLogger logger = new BackgroundLogger();
+        logger.setDaemon(true); // must be set BEFORE start()
+        logger.start();
+
+        Thread.sleep(3000);
+        System.out.println("Main finished."); 
+        // JVM exits here; the daemon logger is killed automatically
+    }
+}</code></pre>`,
+  assignment: `<p><strong>Assignment:</strong> Run the example above and observe that "Logging..." stops appearing right after "Main finished." prints. Then remove <code>setDaemon(true)</code> and run it again — explain what changes and why the program no longer exits promptly.</p>`
+},
+{
+  title: "14. synchronized Blocks (Fine-Grained Locking)",
+  body: `
+  <p>Instead of synchronizing an entire method, you can synchronize just the critical section using a <code>synchronized</code> block on a chosen lock object. This locks only the code that truly needs protection, letting the rest of the method run freely.</p>
+  <h3>Example</h3>
+  <pre><code>class CookingTask extends Thread {
+    static int staticCount = 0;
+    static final Object lock = new Object();
+
+    @Override
+    public void run() {
+        for (int i = 0; i < 1_000_000; i++) {
+            // work that does NOT need protection could go here
+            synchronized (lock) {
+                staticCount++;   // only this line is protected
+            }
+        }
+    }
+}</code></pre>`,
+  assignment: `<p><strong>Assignment:</strong> Take your race-condition counter and protect only the <code>staticCount++</code> line using a <code>synchronized</code> block with a dedicated lock object. Add an unrelated <code>System.out.println</code> inside the loop but outside the block, and confirm the count is still always correct.</p>`
+},
+{
+  title: "15. wait() and notify() — Thread Coordination",
+  body: `
+  <p><code>wait()</code> and <code>notify()</code> let threads coordinate: one thread can pause itself until another thread signals that something it needs is ready. Both must be called from inside a <code>synchronized</code> block on the same lock object.</p>
+  <h3>Example — simple producer/consumer signal</h3>
+  <pre><code>class Message {
+    private String content;
+    private boolean available = false;
+
+    public synchronized String take() throws InterruptedException {
+        while (!available) {
+            wait(); // releases the lock and waits for notify()
+        }
+        available = false;
+        notifyAll();
+        return content;
+    }
+
+    public synchronized void put(String content) throws InterruptedException {
+        while (available) {
+            wait();
+        }
+        this.content = content;
+        available = true;
+        notifyAll(); // wake up any waiting thread
+    }
+}
+
+// Producer thread calls message.put("data");
+// Consumer thread calls message.take();</code></pre>`,
+  assignment: `<p><strong>Assignment:</strong> Using the <code>Message</code> class above, write a <code>Producer</code> thread that puts 5 numbered messages ("Message 1" .. "Message 5") one per second, and a <code>Consumer</code> thread that takes and prints each one as soon as it is ready. Confirm the consumer never prints the same message twice and never prints before it is produced.</p>`
+}
+];
+
+let current = 0;
+
+function renderSidebar(){
+  const list = document.getElementById('sidebar-list');
+  list.innerHTML = '';
+  topics.forEach((t, i) => {
+    const li = document.createElement('li');
+    const btn = document.createElement('button');
+    btn.textContent = t.title.replace(/^\\d+\\.\\s*/, '');
+    btn.dataset.index = i;
+    btn.addEventListener('click', () => goTo(i));
+    li.appendChild(btn);
+    list.appendChild(li);
+  });
+}
+
+function renderTopic(){
+  const t = topics[current];
+  document.getElementById('progress').textContent = `Topic ${current + 1} of ${topics.length}`;
+  document.getElementById('topic-content').innerHTML =
+    `<h2 class="topic-title">${t.title}</h2>` + t.body +
+    `<div class="assignment">${t.assignment}</div>`;
+
+  document.querySelectorAll('#sidebar-list button').forEach(b => {
+    b.classList.toggle('active', Number(b.dataset.index) === current);
+  });
+
+  document.getElementById('prevBtn').disabled = current === 0;
+  document.getElementById('nextBtn').disabled = current === topics.length - 1;
+
+  window.scrollTo({top: 0, behavior: 'instant'});
+}
+
+function goTo(i){
+  current = i;
+  renderTopic();
+}
+
+document.getElementById('prevBtn').addEventListener('click', () => {
+  if (current > 0) goTo(current - 1);
+});
+document.getElementById('nextBtn').addEventListener('click', () => {
+  if (current < topics.length - 1) goTo(current + 1);
+});
+
+renderSidebar();
+renderTopic();
+</script>
+
+</body>
+</html>
