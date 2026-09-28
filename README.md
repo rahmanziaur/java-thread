@@ -1,6 +1,8 @@
 
 **Lecture # 1: (27/09/2026)**
 
+Ref: https://rahmanziaur.github.io/java-thread/
+
 *Part A: Static VS Non Static*
 
 If your goal is to **count how many objects have been created**, then the field `count` should normally be **`static`**, not non-static. The important point is that **static does not mean the value will not increase**. It means there is **one shared copy of the variable for the entire class**.
